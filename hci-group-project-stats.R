@@ -40,7 +40,33 @@ b2[P] ~ dnorm(0,1),
 sigma ~ dexp(1)
 "
 
+## Ordered Categorical Outcomes
+"
+R ~ Ordered-logit(theta[i], kappa)
+theta[i] = 0
+Kappa[k] ~ dnorm(0, 1.5)
+"
+
+
 # Simulation ----
+## Very Simplest - intercept only
+
+N <- 100 # 100 
+E <- rnorm(N)
+
+dsim0 <- data.frame(N, E)
+msim0 <- ulam(
+  alist(
+    E ~ dnorm(mu, sigma),
+    mu <- b0,
+    b0 ~ dnorm(0, 1),
+    sigma ~ dexp(1)
+  ), data=dsim0
+)
+precis(msim0)
+post <- extract.samples(msim0)
+dens(post$b0)
+
 ## Simple ----
 ## Sim 1: Equal enjoyment in both games:
 N <- 100 # 100 participants
@@ -95,7 +121,7 @@ dens(coeffs[,2])
 # than Game 2, but doesn't find the "right" values for the two coeffs.
 # Something to think about.
 
-## Personality
+## Personality ----
 # No effect sim
 N = 100
 G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
@@ -181,6 +207,47 @@ dens(coeffs[,2])
 # Dual effect sim
 
 
+
+
+## Ordered Logit ----
+## Dead Simple
+N = 100
+E <- sample(c(1:7), N, replace=TRUE)
+
+dordlogsim1 <- data.frame(N, E)
+
+mordlogsim1 <- ulam(
+  alist(
+    E ~dordlogit(0, cutpoints),
+    cutpoints ~ dnorm(0, 1.5)
+  ), data=dordlogsim1, chains=4, cores=4
+)
+# cumulative log-probs:
+precis(mordlogsim1 ,depth=2)
+# cumulative probabilities:
+round(inv_logit(coef(mordlogsim1)), 3)
+
+## Now with game type and personality indicators,
+# but also - no effect
+N = 100
+E <- sample(c(1:7), N, replace=TRUE)
+G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
+P <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 have personality type 1, 50 personality type 2
+
+dordlogsim2 <- data.frame(N, E, G, P)
+
+mordlogsim2 <- ulam(
+  alist(
+    E ~ dordlogit(phi, cutpoints),
+    phi <- bG*G + bP*P + bGP*G*P,
+    c(bG, bI, bP, bGP) ~ dnorm(0, 0.5),
+    cutpoints ~ dnorm(0, 1.5)
+  ), data=dordlogsim2, chains=4, cores=4
+)
+# cumulative log-probs
+precis(mordlogsim2, depth=2)
+# cumulative probabilities:
+round(inv_logit(coef(mordlogsim2)), 3)
 
 
 # Statistical Model ----
