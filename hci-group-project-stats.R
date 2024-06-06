@@ -218,7 +218,7 @@ dordlogsim1 <- data.frame(N, E)
 
 mordlogsim1 <- ulam(
   alist(
-    E ~dordlogit(0, cutpoints),
+    E ~ dordlogit(0, cutpoints),
     cutpoints ~ dnorm(0, 1.5)
   ), data=dordlogsim1, chains=4, cores=4
 )
@@ -228,11 +228,18 @@ precis(mordlogsim1 ,depth=2)
 round(inv_logit(coef(mordlogsim1)), 3)
 
 ## Now with game type and personality indicators,
-# but also - no effect
+# Some effect of gender, some of interaction
 N = 100
-E <- sample(c(1:7), N, replace=TRUE)
 G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
 P <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 have personality type 1, 50 personality type 2
+
+# making continuous "enjoyment" data
+# which I model here as a linear regression with some noise.
+E_cont <- 0 + 2*G+0*P+0*G*P + rnorm(N)
+# defining the scales we used for our question
+cut_points <- 5
+# "cutting" that continuous data to fit into ordered categories:
+E <- cut(E_cont, breaks = cut_points, labels = c(-2, -1, 0, 1, 2), ordered_result = TRUE)
 
 dordlogsim2 <- data.frame(N, E, G, P)
 
@@ -240,17 +247,89 @@ mordlogsim2 <- ulam(
   alist(
     E ~ dordlogit(phi, cutpoints),
     phi <- bG*G + bP*P + bGP*G*P,
-    c(bG, bI, bP, bGP) ~ dnorm(0, 0.5),
+    c(bG, bP, bGP) ~ dnorm(0, 0.5),
     cutpoints ~ dnorm(0, 1.5)
   ), data=dordlogsim2, chains=4, cores=4
 )
+
 # cumulative log-probs
 precis(mordlogsim2, depth=2)
 # cumulative probabilities:
 round(inv_logit(coef(mordlogsim2)), 3)
 
+## Only interaction effect
+N = 100
+G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
+P <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 have personality type 1, 50 personality type 2
 
-# Statistical Model ----
+# making continuous "enjoyment" data
+# which I model here as a linear regression with some noise.
+E_cont <- 0 + 0*G+0*P+2*G*P + rnorm(N)
+# defining the scales we used for our question
+cut_points <- 5
+# "cutting" that continuous data to fit into ordered categories:
+E <- cut(E_cont, breaks = cut_points, labels = c(-2, -1, 0, 1, 2), ordered_result = TRUE)
+
+dordlogsim3 <- data.frame(N, E, G, P)
+mordlogsim3 <- stan( fit=mordlogsim2@stanfit, data=dordlogsim3, chains=4 ) 
+
+# cumulative log-probs
+precis(mordlogsim3, depth=2)
+# cumulative probabilities:
+round(inv_logit(coef(mordlogsim3)), 3)
+
+## No interaction effect
+N = 100
+G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
+P <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 have personality type 1, 50 personality type 2
+
+# making continuous "enjoyment" data
+# which I model here as a linear regression with some noise.
+E_cont <- 0 + 1*G+1*P+0*G*P + rnorm(N)
+cut_points <- c(-Inf, 1.5, 2.5, 3.5, 4.5, Inf)
+E <- findInterval(E_cont, cut_points, all.inside = TRUE)
+
+dordlogsim4 <- data.frame(N, E, G, P)
+mordlogsim4 <- ulam(
+  alist(
+    E ~ dordlogit(phi, cutpoints),
+    phi <- bG*G + bP*P + bGP*G*P,
+    c(bG, bP, bGP) ~ dnorm(0, 0.5),
+    cutpoints ~ dnorm(0, 1.5)
+  ), data=dordlogsim4, chains=4, cores=4
+)
+
+# cumulative log-probs
+precis(mordlogsim4, depth=2)
+# cumulative probabilities:
+round(inv_logit(coef(mordlogsim4)), 3)
+
+# plot the simulated data
+plot(E)
+
+# plot posterior predictive distribution
+mu4 <- link(mordlogsim4)
+
+mu_mean4 <- apply(mu4, 2, mean)
+mu_PI <- apply(mu4, 2, PI)
+
+d4sim <- sim(mordlogsim4)
+d_PI <- apply(d4sim, 2, PI)
+
+plot(mu_mean4 ~ dordlogsim4$E, col=rangi2, ylim=range(mu_PI),
+     xlab="Observed divorce", ylab="Predicted divorce")
+
+simplehist(dordlogsim4$E, xlim=c(0.5,5.5), xlab="response")
+plot(precis(mordlogsim4, depth=2))
+
+cum_pr_k <- (cumsum(table(dordlogsim4$E)/nrow(dordlogsim4)))
+plot(1:5, cum_pr_k, type="b", xlab="response", ylim=c(0,1))
+
+plot(1:4, round(inv_logit(coef(mordlogsim4)[4:7]), 3))
+
+simplehist(as.vector(d4sim), xlab="response")
+
+  # Statistical Model ----
 ## Simple
 m1 <- ulam(
   alist(

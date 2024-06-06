@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Except certain files:
+!.gitignore
+!hci-group-project-stats.*
+!hci-model.R
+
+.Rproj.user
