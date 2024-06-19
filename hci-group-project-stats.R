@@ -380,6 +380,8 @@ msimz <- ulam(
 )
 plot(precis(msimz))
 
+post <- extract.samples(msimz)
+
 P_seq1 <- seq(from=min(dsimz$P_G1), to=max(dsimz$P_G1), length.out=100)
 P_seq2 <- seq(from=min(dsimz$P_G2), to=max(dsimz$P_G2), length.out=100)
 mu <- link(msimz, data=list(P_G1=P_seq1, P_G2=P_seq2))
@@ -389,11 +391,13 @@ mu_mean_2 <- apply(mu$mu2, 2, mean)
 mu.PI_2 <- apply(mu$mu2, 2, PI)
 
 plot(E_G1 ~ P_G1, data=dsimz, col="blue")
-lines(P_seq, mu_mean_1, lwd=2)
-shade(mu.PI_1, P_seq)
+lines(P_seq1, mu_mean_1, lwd=2)
+shade(mu.PI_1, P_seq1)
 
 points(E_G2 ~ P_G2, data=dsimz, col="red")
-lines(P_seq, mu_mean_2, lwd=2)
-shade(mu.PI_2, P_seq)
+lines(P_seq2, mu_mean_2, lwd=2)
+shade(mu.PI_2, P_seq2)
 
+dens(post$b1_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5))
+dens(post$b1_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
 

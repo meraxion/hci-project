@@ -2,51 +2,41 @@
 library(dagitty)
 library(rethinking)
 
-set.seed(41)
-
-
-# SIM
-## No interaction effect
-N = 100
-G <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 play Game 1, 50 Game 2, and shuffle them.
-P <- sample(c(rep(1, N/2), rep(2, N/2))) # 50 have personality type 1, 50 personality type 2
-
-# making continuous "enjoyment" data
-# which I model here as a linear regression with some noise.
-E_cont <- 0 + 1*G+1*P+0*G*P + rnorm(N)
-cut_points <- c(-Inf, 1.5, 2.5, 3.5, 4.5, Inf)
-E <- findInterval(E_cont, cut_points, all.inside = TRUE)
-
-dordlogsim4 <- data.frame(N, E, G, P)
-mordlogsim4 <- ulam(
-  alist(
-    E ~ dordlogit(phi, cutpoints),
-    phi <- bG*G + bP*P + bGP*G*P,
-    c(bG, bP, bGP) ~ dnorm(0, 0.5),
-    cutpoints ~ dnorm(0, 1.5)
-  ), data=dordlogsim4, chains=4, cores=4
-)
-
-# cumulative log-probs
-precis(mordlogsim4, depth=2)
-# cumulative probabilities:
-round(inv_logit(coef(mordlogsim4)), 3)
-
-# Plot the data
-simplehist(dordlogsim4$E, xlim=c(0.5,5.5), xlab="response")
-# Plot posterior predictive distribution
-simplehist(as.vector(d4sim), xlab="response")
-
-
-# REAL
 # import real data
 d <- data.frame()
 
-mordlog4 <- ulam(
+m1 <- ulam(
   alist(
-    E ~ dordlogit(phi, cutpoints),
-    phi <- bG*G + bP*P + bGP*G*P,
-    c(bG, bP, bGP) ~ dnorm(0, 0.5),
-    cutpoints ~ dnorm(0, 1.5)
-  ), data=d, chains=4, cores=4
+    E_G1 ~ dnorm(mu1, sigma1),
+    mu1 <- b0_1 + b1_1*P_G1,
+    b0_1 ~ dnorm(0,1),
+    b1_1 ~ dnorm(0,1),
+    sigma1 ~ dexp(1),
+    
+    E_G2 ~ dnorm(mu2, sigma2),
+    mu2 <- b0_2 + b1_2*P_G2,
+    b0_2 ~ dnorm(0,1),
+    b1_2 ~ dnorm(0,1),
+    sigma2 ~ dexp(1)
+  ), data=d
 )
+plot(precis(m1))
+
+P_seq1 <- seq(from=min(d$P_G1), to=max(d$P_G1), length.out=100)
+P_seq2 <- seq(from=min(d$P_G2), to=max(d$P_G2), length.out=100)
+mu <- link(m1, data=list(P_G1=P_seq1, P_G2=P_seq2))
+mu_mean_1 <- apply(mu$mu1, 2, mean)
+mu.PI_1 <- apply(mu$mu1, 2, PI)
+mu_mean_2 <- apply(mu$mu2, 2, mean)
+mu.PI_2 <- apply(mu$mu2, 2, PI)
+
+plot(E_G1 ~ P_G1, data=d, col="blue")
+lines(P_seq, mu_mean_1, lwd=2)
+shade(mu.PI_1, P_seq)
+
+points(E_G2 ~ P_G2, data=d, col="red")
+lines(P_seq, mu_mean_2, lwd=2)
+shade(mu.PI_2, P_seq)
+
+dens(post$b1_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5))
+dens(post$b1_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
