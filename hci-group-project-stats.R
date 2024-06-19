@@ -350,7 +350,6 @@ precis(m1, depth=2)
 
 
 
-
 # Restart ----
 # Right, so what I actually want to do is to generate two groups and just estimate the means for both of them,
 # and then take the posterior predictive of both and see if the 95% HDIs overlap.
@@ -398,6 +397,28 @@ points(E_G2 ~ P_G2, data=dsimz, col="red")
 lines(P_seq2, mu_mean_2, lwd=2)
 shade(mu.PI_2, P_seq2)
 
+# This shows the intercept for each game
+dens(post$b0_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5))
+dens(post$b0_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
+
+# This shows the effect of personality on each game
 dens(post$b1_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5))
 dens(post$b1_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
+
+# This does the same, but slightly prettier
+frame()
+
+x <- post$b1_1
+adj <- 0.5
+main <-  ""
+thed <-  density(x, adjust = adj)
+plot(thed, main=main, xlim=c(0, 2.5))
+hpd <- HPDI(x, prob=TRUE)
+shade(thed, hpd, col=col.alpha("blue",0.3))
+
+x <- post$b1_2
+thed <- density(x, adjust=adj)
+lines(thed$x, thed$y)
+hpd <- HPDI(x, prob=TRUE)
+shade(thed, hpd, col=col.alpha("red",0.3))
 

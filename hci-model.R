@@ -1,10 +1,15 @@
 # Imports ----
 library(dagitty)
 library(rethinking)
+library(tidyverse)
 
 # import real data
+d <- read.csv("data.csv")
 d <- data.frame()
 
+
+
+# Run the model
 m1 <- ulam(
   alist(
     E_G1 ~ dnorm(mu1, sigma1),
