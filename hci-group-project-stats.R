@@ -349,4 +349,51 @@ precis(m1, depth=2)
 
 
 
-# Plotting ----
+
+
+# Restart ----
+# Right, so what I actually want to do is to generate two groups and just estimate the means for both of them,
+# and then take the posterior predictive of both and see if the 95% HDIs overlap.
+
+# The Generative Model now becomes
+N <- 100
+P_G1 <- rnorm(N)
+E_G1 <- rnorm(N, mean = 0 + 0.5*P_G1)
+P_G2 <- rnorm(N)
+E_G2 <- rnorm(N, mean = 0 + 2*P_G2)
+
+dsimz <- data.frame(N, E_G1, P_G1, E_G2, P_G2)
+msimz <- ulam(
+  alist(
+    E_G1 ~ dnorm(mu1, sigma1),
+    mu1 <- b0_1 + b1_1*P_G1,
+    b0_1 ~ dnorm(0,1),
+    b1_1 ~ dnorm(0,1),
+    sigma1 ~ dexp(1),
+    
+    E_G2 ~ dnorm(mu2, sigma2),
+    mu2 <- b0_2 + b1_2*P_G2,
+    b0_2 ~ dnorm(0,1),
+    b1_2 ~ dnorm(0,1),
+    sigma2 ~ dexp(1)
+  ), data=dsimz
+)
+plot(precis(msimz))
+
+P_seq1 <- seq(from=min(dsimz$P_G1), to=max(dsimz$P_G1), length.out=100)
+P_seq2 <- seq(from=min(dsimz$P_G2), to=max(dsimz$P_G2), length.out=100)
+mu <- link(msimz, data=list(P_G1=P_seq1, P_G2=P_seq2))
+mu_mean_1 <- apply(mu$mu1, 2, mean)
+mu.PI_1 <- apply(mu$mu1, 2, PI)
+mu_mean_2 <- apply(mu$mu2, 2, mean)
+mu.PI_2 <- apply(mu$mu2, 2, PI)
+
+plot(E_G1 ~ P_G1, data=dsimz, col="blue")
+lines(P_seq, mu_mean_1, lwd=2)
+shade(mu.PI_1, P_seq)
+
+points(E_G2 ~ P_G2, data=dsimz, col="red")
+lines(P_seq, mu_mean_2, lwd=2)
+shade(mu.PI_2, P_seq)
+
+
