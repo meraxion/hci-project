@@ -22,10 +22,16 @@ data=within(data,
           { personality = rowMeans( cbind(personality1,personality2, personality3,
                                           personality4, personality5, personality6), na.rm = T)})
 
-# After that, I split the data-set in two based on the game played:
-d1 <- data[data$game_version == 1, ]
-d2 <- data[data$game_version == 2, ]
 
+# And then I can save this data-set:
+write.csv(data, "data_clean.csv")
+# After that, I split the data-set in two based on the game played:
+d1 <- data[data$game_version == 1, ] # This is Moody
+d2 <- data[data$game_version == 2, ] # This is Hyper
+
+summary(data)
+summary(d1)
+summary(d2)
 
 # Then, I make the data frame the model will use:
 d <- data.frame(E_G1 = d1$enjoyment, P_G1 = d1$personality,
@@ -48,23 +54,45 @@ m1 <- ulam(
 )
 plot(precis(m1))
 
+traceplot(m1)
+
 post <- extract.samples(m1)
 
-P_seq1 <- seq(from=min(d$P_G1), to=max(d$P_G1), length.out=100)
-P_seq2 <- seq(from=min(d$P_G2), to=max(d$P_G2), length.out=100)
+from <- min(d$P_G1, d$P_G2)
+to <- max(d$P_G1, d$P_G2)
+
+P_seq1 <- seq(from=from, to=to, length.out=100)
+P_seq2 <- seq(from=from, to=to, length.out=100)
 mu <- link(m1, data=list(P_G1=P_seq1, P_G2=P_seq2))
 mu_mean_1 <- apply(mu$mu1, 2, mean)
 mu.PI_1 <- apply(mu$mu1, 2, PI)
 mu_mean_2 <- apply(mu$mu2, 2, mean)
 mu.PI_2 <- apply(mu$mu2, 2, PI)
 
-plot(E_G1 ~ P_G1, data=d, col="blue")
-lines(P_seq1, mu_mean_1, lwd=2)
+plot(E_G1 ~ P_G1, data=d, col="blue",
+     main = "Linear Regression Personality ~ Enjoyment",
+     xlab = "Personality", 
+     ylab = "Enjoyment")
+lines(P_seq1, mu_mean_1, lwd=2, col = "blue")
 shade(mu.PI_1, P_seq1)
 
 points(E_G2 ~ P_G2, data=d, col="red")
-lines(P_seq2, mu_mean_2, lwd=2)
+lines(P_seq2, mu_mean_2, lwd=2, col = "red")
 shade(mu.PI_2, P_seq2)
 
-dens(post$b1_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5))
+legend("topleft", 
+       legend = c("Moody", "Hyper"),
+       col = c("blue", "red"),
+       lty = 1)
+
+dens(post$b0_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(-1.0, 4.5),
+     main = "Intercept Density Plots with 0.95 HDI")
+dens(post$b0_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
+legend("topleft", legend = c("Moody", "Hyper"),
+       col = c("blue", "red"),lty = 1)
+
+dens(post$b1_1, show.HPDI = 0.95, col=rgb(0,0,1,1/4), xlim=c(0, 2.5),
+     main = "Personality Coefficient Density Plots with 0.95 HDI")
 dens(post$b1_2, show.HPDI = 0.95, col=rgb(1,0,0,1/4), add = TRUE)
+legend("topright", legend = c("Moody", "Hyper"),
+       col = c("blue", "red"),lty = 1)
